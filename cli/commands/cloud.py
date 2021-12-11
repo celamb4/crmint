@@ -90,7 +90,7 @@ def _check_if_vpc_exists(stage, debug=False):
 
 def _check_if_peering_exists(stage, debug=False):
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
-  command = "{gcloud_bin} services vpc-peerings list --network={network} --project={network_project} | grep {network}".format(
+  command = "{gcloud_bin} services vpc-peerings list --network={network} --verbosity critical --project={network_project} | grep {network}-psc".format(
       gcloud_bin=gcloud_command,
       network=stage.network,
       network_project=stage.network_project)
@@ -140,6 +140,7 @@ def create_vpc(stage, debug=False):
       --service=servicenetworking.googleapis.com \
       --ranges={network}-psc \
       --network={network} \
+      --force \
       --project={network_project}".format(
       gcloud_bin=gcloud_command,
       network=stage.network,
@@ -190,7 +191,7 @@ def _check_if_connector_subnet_exists(stage, debug=False):
 
 def create_subnet(stage, debug=False):
   if _check_if_subnet_exists(stage, debug=debug):
-    click.echo("     VPC Subnet already exists.")
+    click.echo("     VPC App Subnet already exists.")
     pass
   else:
     gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
@@ -207,12 +208,13 @@ def create_subnet(stage, debug=False):
         network_project=stage.network_project
       )
 
-    shared.execute_command("Create the VPC Subnet", command_subnet, debug=debug)
+    shared.execute_command("Create the VPC App Subnet", command_subnet, debug=debug)
 
   if _check_if_connector_subnet_exists(stage, debug=debug):
     click.echo("     VPC Connector Subnet already exists.")
     pass
   else:
+    gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
     command_connector_subnet = "{gcloud_bin} compute networks subnets create {connector_subnet} \
       --network={network} \
       --range={connector_cidr} \

@@ -48,6 +48,7 @@ def _default_stage_context(stage_name):
       database_project=settings.DATABASE_PROJECT,
       network=settings.NETWORK,
       subnet=settings.SUBNET,
+      subnet_region=settings.SUBNET_REGION,
       subnet_cidr=settings.SUBNET_CIDR,
       connector=settings.CONNECTOR,
       connector_subnet=settings.CONNECTOR_SUBNET,

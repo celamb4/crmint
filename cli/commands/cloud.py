@@ -492,7 +492,7 @@ cat > %(workdir)s/backends/data/app.json <<EOL
 }
 EOL""".strip() % dict(
     workdir=stage.workdir,
-    app_title=stage.app_title,
+    app_title=stage.gae_app_title,
     notification_sender_email=stage.notification_sender_email)
 
   # We dont't use prod environment for the frontend to speed up deploy.
@@ -505,7 +505,7 @@ export const environment = {
 }
 EOL""".strip() % dict(
     workdir=stage.workdir,
-    app_title=stage.app_title,
+    app_title=stage.gae_app_title,
     enabled_stages="true" if stage.enabled_stages else "false")
 
   commands = [

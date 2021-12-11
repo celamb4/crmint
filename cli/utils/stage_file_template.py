@@ -73,6 +73,7 @@ enabled_stages = False
 # Network configuration
 network = "{network}"
 subnet = "{subnet}"
+subnet_region = "{subnet_region}"
 subnet_cidr = "{subnet_cidr}"
 connector = "{connector}"
 connector_subnet = "{connector_subnet}"

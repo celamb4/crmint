@@ -76,7 +76,6 @@ subnet = "{subnet}"
 subnet_cidr = "{subnet_cidr}"
 connector = "{connector}"
 connector_cidr = "{connector_cidr}"
-network_service_project = "{network_service_project}"
-network_host_project = "{network_host_project}"
+network_project = "{network_project}"
 
 """.strip()

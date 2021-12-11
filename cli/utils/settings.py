@@ -52,10 +52,9 @@ SUBNET = os.environ.get("SUBNET", "crmint-{}-subnet".format(REGION))
 SUBNET_CIDR = os.environ.get("SUBNET_CIDR", "10.0.0.0/28")
 CONNECTOR = os.environ.get("CONNECTOR", "crmint-vpc-serverless-connector")
 CONNECTOR_CIDR = os.environ.get("CONNECTOR_CIDR", "10.0.0.16/28")
-NETWORK_SERVICE_PROJECT = os.environ.get("NETWORK_SERVICE_PROJECT", PROJECT)
-NETWORK_HOST_PROJECT = os.environ.get("NETWORK_HOST_PROJECT", PROJECT)
+NETWORK_PROJECT = os.environ.get("NETWORK_PROJECT", PROJECT)
 
 #AppEngine config
 GAE_PROJECT = os.environ.get("GAE_PROJECT", PROJECT)
-GAE_REGION = os.environ.get("GAE_REGION", REGION)
+GAE_REGION = os.environ.get("GAE_REGION", "us-central")
 GAE_APP_TITLE = os.environ.get("GAE_APP_TITLE", " ".join(shared.get_default_stage_name().split("-")).title())

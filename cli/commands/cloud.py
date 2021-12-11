@@ -71,6 +71,71 @@ def create_appengine(stage, debug=False):
   shared.execute_command("Create the App Engine instance", command, debug=debug)
 
 
+def _check_if_vpc_exists(stage, debug=False):
+  gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
+  command = "{gcloud_bin} compute networks describe --verbosity critical --project={network_project} | grep -q 'codeBucket'".format(
+      gcloud_bin=gcloud_command,
+      network_project=stage.network_project)
+  status, out, err = shared.execute_command("Check if VPC already exists",
+      command,
+      report_empty_err=False,
+      debug=debug)
+  return status == 0
+
+
+def create_vpc(stage, debug=False):
+  if _check_if_vpc_exists(stage, debug=debug):
+    click.echo("     VPC already exists.")
+    return
+
+  gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
+  command = "{gcloud_bin} compute networks create {network} --project={network_project} \
+    --subnet-mode=custom \
+    --bgp-routing-mode=regional \
+    --mtu=1460".format(
+      gcloud_bin=gcloud_command,
+      network=stage.network,
+      network_project=stage.network_project
+    )
+  shared.execute_command("Create the VPC", command, debug=debug)
+
+def _check_if_subnet_exists(stage, debug=False):
+  # Check that subnet exist in service project.
+  gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
+  command = "{gcloud_bin} compute networks subnets describe {subnet} --verbosity critical --project={network_project} \
+    --region={subnet_region} | grep -q 'codeBucket'".format(
+      gcloud_bin=gcloud_command,
+      subnet=stage.subnet,
+      subnet_region=stage.subnet_region,
+      network_project=stage.network_project)
+  status, out, err = shared.execute_command("Check if VPC already exists",
+      command,
+      report_empty_err=False,
+      debug=debug)
+  return status == 0
+
+
+def create_subnet(stage, debug=False):
+  if _check_if_subnet_exists(stage, debug=debug):
+    click.echo("     VPC Subnet already exists.")
+    return
+
+  gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
+  command = "{gcloud_bin} gcloud compute networks subnets create {subnet} \
+    --network={network} \
+    --range={subnet_cidr} \
+    --region={subnet_region} \
+    --project={network_project}".format(
+      gcloud_bin=gcloud_command,
+      subnet=stage.subnet,
+      network=stage.network,
+      subnet_cidr=stage.subnet_cidr,
+      subnet_region=subnet_region,
+      network_project=stage.network_project
+    )
+  shared.execute_command("Create the VPC", command, debug=debug)
+
+
 def create_service_account_key_if_needed(stage, debug=False):
   if shared.check_service_account_file(stage):
     click.echo("     Service account key already exists.")
@@ -169,14 +234,14 @@ def create_mysql_instance_if_needed(stage, debug=False):
     --project={database_project} \
     --database-version MYSQL_5_7 \
     --storage-auto-increase \
-    --network=projects/{network_service_project}/global/networks/{network} \
+    --network=projects/{network_project}/global/networks/{network} \
     --no-assign-ip ".format(
       gcloud_bin=gcloud_command,
       database_instance_name=stage.database_instance_name,
       database_project=stage.database_project,
       database_region=stage.database_region,
       database_tier=stage.database_tier,
-      network_service_project=stage.network_service_project,
+      network_project=stage.network_project,
       network=stage.network
     )
   shared.execute_command("Creating MySQL instance", command, debug=debug)
@@ -269,6 +334,8 @@ def activate_services(stage, debug=False):
     sqladmin.googleapis.com \
     cloudscheduler.googleapis.com \
     cloudbuild.googleapis.com \
+    servicenetworking.googleapis.com \
+    compute.googleapis.com \
     appengine.googleapis.com".format(
       gcloud_bin=gcloud_command,
       project_id=stage.project_id)
@@ -587,6 +654,8 @@ def setup(stage_name, debug):
   components = [
       downgrade_app_engine_python,
       activate_services,
+      create_vpc,
+      create_connector,
       create_appengine,
       create_service_account_key_if_needed,
       grant_cloud_build_permissions,

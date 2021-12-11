@@ -91,7 +91,8 @@ def _check_if_vpc_exists(stage, debug=False):
 
 def create_vpc(stage, debug=False):
   '''
-  Creates a VPC in the project.
+  Creates a VPC in the project. Then allocates an IP Range for cloudSQL.
+  finally, create peering to allow cloudSQL connection via private service access.
   To do:
   - Add support for shared VPC logic
   - Manage XPN Host permissions or add pre-requisite for shared vpc
@@ -110,6 +111,29 @@ def create_vpc(stage, debug=False):
       network_project=stage.network_project
     )
   shared.execute_command("Create the VPC", command, debug=debug)
+
+  command = "{gcloud_bin} compute addresses create google-managed-services-{network} \
+      --global \
+      --purpose=VPC_PEERING \
+      --addresses=192.168.0.0 \
+      --prefix-length=28 \
+      --network=projects/{network_project}/global/networks/{network}".format(
+      gcloud_bin=gcloud_command,
+      network=stage.network,
+      network_project=stage.network_project
+    )
+  shared.execute_command("Allocating an IP address range", command, debug=debug)
+
+  command = "{gcloud_bin} services vpc-peerings connect \
+      --service=servicenetworking.googleapis.com \
+      --ranges=google-managed-services-{network} \
+      --network=projects/{network_project}/global/networks/{network} \
+      --project={network_project}".format(
+      gcloud_bin=gcloud_command,
+      network=stage.network,
+      network_project=stage.network_project
+    )
+  shared.execute_command("Creating a private connection", command, debug=debug)
 
 def _check_if_subnet_exists(stage, debug=False):
   # Check that subnet exist in service project.
@@ -145,41 +169,42 @@ def _check_if_connector_subnet_exists(stage, debug=False):
 def create_subnet(stage, debug=False):
   if _check_if_subnet_exists(stage, debug=debug):
     click.echo("     VPC Subnet already exists.")
-    return
+    pass
+  else:
+    gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
+    command_subnet = "{gcloud_bin} compute networks subnets create {subnet} \
+      --network={network} \
+      --range={subnet_cidr} \
+      --region={subnet_region} \
+      --project={network_project}".format(
+        gcloud_bin=gcloud_command,
+        subnet=stage.subnet,
+        network=stage.network,
+        subnet_cidr=stage.subnet_cidr,
+        subnet_region=stage.subnet_region,
+        network_project=stage.network_project
+      )
 
-  gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
-  command_subnet = "{gcloud_bin} compute networks subnets create {subnet} \
-    --network={network} \
-    --range={subnet_cidr} \
-    --region={subnet_region} \
-    --project={network_project}".format(
-      gcloud_bin=gcloud_command,
-      subnet=stage.subnet,
-      network=stage.network,
-      subnet_cidr=stage.subnet_cidr,
-      subnet_region=stage.subnet_region,
-      network_project=stage.network_project
-    )
-
-  shared.execute_command("Create the VPC Subnet", command_subnet, debug=debug)
+    shared.execute_command("Create the VPC Subnet", command_subnet, debug=debug)
 
   if _check_if_connector_subnet_exists(stage, debug=debug):
     click.echo("     VPC Connector Subnet already exists.")
-    return
-  
-  command_connector_subnet = "{gcloud_bin} compute networks subnets create {connector_subnet} \
-    --network={network} \
-    --range={connector_cidr} \
-    --region={subnet_region} \
-    --project={network_project}".format(
-      gcloud_bin=gcloud_command,
-      connector_subnet=stage.connector_subnet,
-      network=stage.network,
-      connector_cidr=stage.connector_cidr,
-      subnet_region=subnet_region,
-      network_project=stage.network_project
-    )
-  shared.execute_command("Create the VPC Connector Subnet", command_connector_subnet, debug=debug)
+    pass
+  else:
+    command_connector_subnet = "{gcloud_bin} compute networks subnets create {connector_subnet} \
+      --network={network} \
+      --range={connector_cidr} \
+      --region={subnet_region} \
+      --project={network_project}".format(
+        gcloud_bin=gcloud_command,
+        connector_subnet=stage.connector_subnet,
+        network=stage.network,
+        connector_cidr=stage.connector_cidr,
+        subnet_region=stage.subnet_region,
+        network_project=stage.network_project
+      )
+    shared.execute_command("Create the VPC Connector Subnet", command_connector_subnet, debug=debug)
+  return
 
 def _check_if_vpc_connector_exists(stage, debug=False):
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
@@ -425,6 +450,7 @@ def activate_services(stage, debug=False):
     servicenetworking.googleapis.com \
     compute.googleapis.com \
     vpcaccess.googleapis.com \
+    dns.googleapis.com \
     appengine.googleapis.com".format(
       gcloud_bin=gcloud_command,
       project_id=stage.project_id)

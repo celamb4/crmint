@@ -88,6 +88,17 @@ def _check_if_vpc_exists(stage, debug=False):
       debug=debug)
   return status == 0
 
+def _check_if_peering_exists(stage, debug=False):
+  gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
+  command = "{gcloud_bin} services vpc-peerings list --network={network} --project={network_project} | grep {network}".format(
+      gcloud_bin=gcloud_command,
+      network=stage.network,
+      network_project=stage.network_project)
+  status, out, err = shared.execute_command("Check if VPC Peering exists",
+      command,
+      report_empty_err=False,
+      debug=debug)
+  return status == 0
 
 def create_vpc(stage, debug=False):
   '''
@@ -124,7 +135,8 @@ def create_vpc(stage, debug=False):
     )
   shared.execute_command("Allocating an IP address range", command, debug=debug)
 
-  command = "{gcloud_bin} services vpc-peerings connect \
+  if _check_if_peering_exists(stage, debug=debug):
+    command = "{gcloud_bin} services vpc-peerings update \
       --service=servicenetworking.googleapis.com \
       --ranges={network}-psc \
       --network={network} \
@@ -133,7 +145,17 @@ def create_vpc(stage, debug=False):
       network=stage.network,
       network_project=stage.network_project
     )
-  shared.execute_command("Creating a private connection", command, debug=debug)
+  else:
+    command = "{gcloud_bin} services vpc-peerings connect \
+        --service=servicenetworking.googleapis.com \
+        --ranges={network}-psc \
+        --network={network} \
+        --project={network_project}".format(
+        gcloud_bin=gcloud_command,
+        network=stage.network,
+        network_project=stage.network_project
+      )
+  shared.execute_command("Creating or updating the private connection", command, debug=debug)
 
 def _check_if_subnet_exists(stage, debug=False):
   # Check that subnet exist in service project.
@@ -229,7 +251,7 @@ def create_vpc_connector(stage, debug=False):
   if _check_if_vpc_connector_exists(stage, debug=debug):
     click.echo("     VPC Connector already exists.")
     return
-
+  
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
   command = "{gcloud_bin} compute networks vpc-access connectors create {connector} \
       --region {subnet_region} \

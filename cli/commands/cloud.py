@@ -73,8 +73,9 @@ def create_appengine(stage, debug=False):
 
 def _check_if_vpc_exists(stage, debug=False):
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
-  command = "{gcloud_bin} compute networks describe --verbosity critical --project={network_project} | grep -q 'codeBucket'".format(
+  command = "{gcloud_bin} compute networks describe {network} --verbosity critical --project={network_project}".format(
       gcloud_bin=gcloud_command,
+      network=stage.network,
       network_project=stage.network_project)
   status, out, err = shared.execute_command("Check if VPC already exists",
       command,
@@ -109,7 +110,7 @@ def _check_if_subnet_exists(stage, debug=False):
   # Check that subnet exist in service project.
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
   command = "{gcloud_bin} compute networks subnets describe {subnet} --verbosity critical --project={network_project} \
-    --region={subnet_region} | grep -q 'codeBucket'".format(
+    --region={subnet_region}".format(
       gcloud_bin=gcloud_command,
       subnet=stage.subnet,
       subnet_region=stage.subnet_region,
@@ -127,7 +128,7 @@ def create_subnet(stage, debug=False):
     return
 
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
-  command = "{gcloud_bin} gcloud compute networks subnets create {subnet} \
+  command = "{gcloud_bin} compute networks subnets create {subnet} \
     --network={network} \
     --range={subnet_cidr} \
     --region={subnet_region} \

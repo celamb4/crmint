@@ -112,22 +112,24 @@ def create_vpc(stage, debug=False):
     )
   shared.execute_command("Create the VPC", command, debug=debug)
 
-  command = "{gcloud_bin} compute addresses create google-managed-services-{network} \
+  command = "{gcloud_bin} compute addresses create {network}-psc \
       --global \
       --purpose=VPC_PEERING \
-      --addresses=192.168.0.0 \
-      --prefix-length=28 \
-      --network=projects/{network_project}/global/networks/{network}".format(
+      --addresses=10.110.0.10 \
+      --prefix-length=24 \
+      --network={network}".format(
       gcloud_bin=gcloud_command,
       network=stage.network,
       network_project=stage.network_project
     )
   shared.execute_command("Allocating an IP address range", command, debug=debug)
 
+gcloud compute addresses create PSC-ADDRESS-1 --global --addresses=10.110.0.10 --purpose=PRIVATE_SERVICE_CONNECT --network=default
+
   command = "{gcloud_bin} services vpc-peerings connect \
       --service=servicenetworking.googleapis.com \
-      --ranges=google-managed-services-{network} \
-      --network=projects/{network_project}/global/networks/{network} \
+      --ranges={network}-psc \
+      --network={network} \
       --project={network_project}".format(
       gcloud_bin=gcloud_command,
       network=stage.network,

@@ -174,8 +174,8 @@ def create_mysql_instance_if_needed(stage, debug=False):
       gcloud_bin=gcloud_command,
       database_instance_name=stage.database_instance_name,
       project_id=stage.project_id,
-      project_sql_region=stage.database_region,
-      project_sql_tier=stage.database_tier,
+      database_region=stage.database_region,
+      database_tier=stage.database_tier,
       network=stage.network)
   shared.execute_command("Creating MySQL instance", command, debug=debug)
 

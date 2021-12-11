@@ -23,7 +23,7 @@ import click
 from cli.commands import stages
 from cli.utils import constants
 from cli.utils import shared
-
+from cli.utils import settings
 
 def fetch_stage_or_default(stage_name=None, debug=False):
   if not stage_name:
@@ -50,7 +50,7 @@ def _check_if_appengine_instance_exists(stage, debug=False):
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
   command = "{gcloud_bin} app describe --verbosity critical --project={project_id} | grep -q 'codeBucket'".format(
       gcloud_bin=gcloud_command,
-      project_id=stage.project_id_gae)
+      project_id=stage.project_id)
   status, out, err = shared.execute_command("Check if App Engine already exists",
       command,
       report_empty_err=False,
@@ -66,7 +66,7 @@ def create_appengine(stage, debug=False):
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
   command = "{gcloud_bin} app create --project={project_id} --region={region}".format(
       gcloud_bin=gcloud_command,
-      project_id=stage.project_id_gae,
+      project_id=stage.project_id,
       region=stage.project_region)
   shared.execute_command("Create the App Engine instance", command, debug=debug)
 
@@ -83,12 +83,14 @@ def create_service_account_key_if_needed(stage, debug=False):
     --key-file-type='json' \
     --project={project_id}".format(
       gcloud_bin=gcloud_command,
-      project_id=stage.project_id_gae,
+      project_id=stage.project_id,
       service_account_file=service_account_file)
   shared.execute_command("Create the service account key", command, debug=debug)
 
 
 def confirm_authorized_user_owner_role(stage, debug=False):
+  status = 0
+  '''
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
   auth_list_command = "{gcloud_bin} auth list \
     --format=\"value(account)\"".format(
@@ -102,11 +104,12 @@ def confirm_authorized_user_owner_role(stage, debug=False):
     | grep -q 'roles/owner'".format(
       gcloud_bin=gcloud_command,
       auth_user=out.strip(),
-      project_id=stage.project_id_gae)
+      project_id=stage.project_id)
   status, out, err = shared.execute_command("Check if authorized user is owner",
       command,
       report_empty_err=False,
       debug=debug)
+  '''
   return status == 0
 
 
@@ -122,14 +125,14 @@ def grant_cloud_build_permissions(stage, debug=False):
     --filter=\"{project_id}\" \
     --format=\"value(PROJECT_NUMBER)\"".format(
       gcloud_bin=gcloud_command,
-      project_id=stage.project_id_gae)
+      project_id=stage.project_id)
   status, out, err = shared.execute_command(
       "Getting the project number", project_number_command, debug=debug)
   command = "{gcloud_bin} projects add-iam-policy-binding {project_id} \
     --member=\"serviceAccount:{project_number}@cloudbuild.gserviceaccount.com\" \
     --role=\"roles/storage.objectViewer\"".format(
       gcloud_bin=gcloud_command,
-      project_id=stage.project_id_gae,
+      project_id=stage.project_id,
       project_number=out.strip())
   shared.execute_command("Grant Cloud Build permissions", command, debug=debug)
 
@@ -140,7 +143,7 @@ def _check_if_mysql_instance_exists(stage, debug=False):
     --project={project_id} {db_instance_name} \
     | grep -q '{db_instance_name}'".format(
       gcloud_bin=gcloud_command,
-      project_id=stage.project_id_gae,
+      project_id=stage.project_id,
       db_instance_name=stage.db_instance_name)
   status, out, err = shared.execute_command("Check if MySQL instance already exists",
       command,
@@ -160,12 +163,15 @@ def create_mysql_instance_if_needed(stage, debug=False):
     --region={project_sql_region} \
     --project={project_id} \
     --database-version MYSQL_5_7 \
-    --storage-auto-increase".format(
+    --storage-auto-increase \
+    --network=projects/{project_id}/global/networks/{network} \
+    --no-assign-ip ".format(
       gcloud_bin=gcloud_command,
       db_instance_name=stage.db_instance_name,
-      project_id=stage.project_id_gae,
+      project_id=stage.project_id,
       project_sql_region=stage.project_sql_region,
-      project_sql_tier=stage.project_sql_tier)
+      project_sql_tier=stage.project_sql_tier,
+      network=stage.network)
   shared.execute_command("Creating MySQL instance", command, debug=debug)
 
 
@@ -176,7 +182,7 @@ def _check_if_mysql_user_exists(stage, debug=False):
     --instance={db_instance_name} \
     | grep -q '{db_username}'".format(
       gcloud_bin=gcloud_command,
-      project_id=stage.project_id_gae,
+      project_id=stage.project_id,
       db_instance_name=stage.db_instance_name,
       db_username=stage.db_username)
   status, out, err = shared.execute_command("Check if MySQL user already exists",
@@ -202,7 +208,7 @@ def create_mysql_user_if_needed(stage, debug=False):
     --project={project_id}".format(
       gcloud_bin=gcloud_command,
       sql_users_command=sql_users_command,
-      project_id=stage.project_id_gae,
+      project_id=stage.project_id,
       db_instance_name=stage.db_instance_name,
       db_username=stage.db_username,
       db_password=stage.db_password)
@@ -216,7 +222,7 @@ def _check_if_mysql_database_exists(stage, debug=False):
     --instance={db_instance_name} \
     | grep -q '{db_name}'".format(
       gcloud_bin=gcloud_command,
-      project_id=stage.project_id_gae,
+      project_id=stage.project_id,
       db_instance_name=stage.db_instance_name,
       db_name=stage.db_name)
   status, out, err = shared.execute_command("Check if MySQL database already exists",
@@ -236,7 +242,7 @@ def create_mysql_database_if_needed(stage, debug=False):
     --instance={db_instance_name} \
     --project={project_id}".format(
       gcloud_bin=gcloud_command,
-      project_id=stage.project_id_gae,
+      project_id=stage.project_id,
       db_instance_name=stage.db_instance_name,
       db_name=stage.db_name)
   shared.execute_command("Creating MySQL database", command, debug=debug)
@@ -258,7 +264,7 @@ def activate_services(stage, debug=False):
     cloudbuild.googleapis.com \
     appengine.googleapis.com".format(
       gcloud_bin=gcloud_command,
-      project_id=stage.project_id_gae)
+      project_id=stage.project_id)
   shared.execute_command("Activate services", command, debug=debug)
 
 
@@ -366,10 +372,10 @@ def deploy_frontend(stage, debug=False):
       "node --max-old-space-size=512 ./node_modules/@angular/cli/bin/ng build",
       "{gcloud_bin} --project={project_id} app deploy gae.yaml --version=v1".format(
           gcloud_bin=gcloud_command,
-          project_id=stage.project_id_gae),
+          project_id=stage.project_id),
       "{gcloud_bin} --project={project_id} app deploy gae.yaml --version=v1".format(
           gcloud_bin=gcloud_command,
-          project_id=stage.project_id_gae),
+          project_id=stage.project_id),
   ]
   cmd_workdir = os.path.join(stage.workdir, 'frontend')
   total = len(commands)
@@ -388,7 +394,7 @@ def deploy_dispatch_rules(stage, debug=False):
   #     the Cloud Shell VM memory which makes it unresponsive.
   command = "{gcloud_bin} --project={project_id} app deploy dispatch.yaml".format(
       gcloud_bin=gcloud_command,
-      project_id=stage.project_id_gae)
+      project_id=stage.project_id)
   cmd_workdir = os.path.join(stage.workdir, 'frontend')
   shared.execute_command("Deploy the dispatch.yaml rules",
       command,
@@ -425,16 +431,16 @@ def deploy_backends(stage, debug=False):
   commands = [
       ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy gae_ibackend.yaml --version=v1".format(
           gcloud_bin=gcloud_command,
-          project_id=stage.project_id_gae),
+          project_id=stage.project_id),
       ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy gae_jbackend.yaml --version=v1".format(
           gcloud_bin=gcloud_command,
-          project_id=stage.project_id_gae),
+          project_id=stage.project_id),
       ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy cron.yaml".format(
           gcloud_bin=gcloud_command,
-          project_id=stage.project_id_gae),
+          project_id=stage.project_id),
       ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy \"{workdir}/frontend/dispatch.yaml\"".format(
           gcloud_bin=gcloud_command,
-          project_id=stage.project_id_gae,
+          project_id=stage.project_id,
           workdir=stage.workdir),
   ]
   cmd_workdir = os.path.join(stage.workdir, 'backends')
@@ -477,10 +483,10 @@ def start_cloud_sql_proxy(stage, debug=False):
           False,
       ),
       (
-          "$CLOUD_SQL_PROXY -projects={project_id} -instances={db_instance_conn_name} -dir={cloudsql_dir} 2>/dev/null &".format(
-              project_id=stage.project_id_gae,
+          "$CLOUD_SQL_PROXY -projects={project_id} -instances={database_instance_conn_name} -dir={cloudsql_dir} 2>/dev/null &".format(
+              project_id=stage.project_id,
               cloudsql_dir=stage.cloudsql_dir,
-              db_instance_conn_name=stage.db_instance_conn_name),
+              database_instance_conn_name=stage.database_instance_conn_name),
           True,
       ),
       (
@@ -513,7 +519,7 @@ def prepare_flask_envars(stage, debug=False):
       google_sdk_dir=os.environ["GOOGLE_CLOUD_SDK"])
   os.environ["FLASK_APP"] = "run_ibackend.py"
   os.environ["FLASK_DEBUG"] = "1"
-  os.environ["APPLICATION_ID"] = stage.project_id_gae
+  os.environ["APPLICATION_ID"] = stage.project_id
 
   # Use the local Cloud SQL Proxy url
   command = "echo \'SQLALCHEMY_DATABASE_URI=\"{cloud_db_uri}\"\' > {workdir}/backends/instance/config.py".format(

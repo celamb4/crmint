@@ -75,7 +75,11 @@ network = "{network}"
 subnet = "{subnet}"
 subnet_cidr = "{subnet_cidr}"
 connector = "{connector}"
+connector_subnet = "{connector_subnet}"
 connector_cidr = "{connector_cidr}"
+connector_min_instances = "{connector_min_instances}"
+connector_max_instances = "{connector_max_instances}"
+connector_machine_type = "{connector_machine_type}"
 network_project = "{network_project}"
 
 """.strip()

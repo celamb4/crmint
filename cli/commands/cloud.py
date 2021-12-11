@@ -44,7 +44,12 @@ def cli():
 
 
 ####################### SETUP #######################
-
+'''
+Notes
+setup requires refactoring to handle infra in a declarative way
+Might be good to move to tearraform and handle state via GCS
+At the least, it should be refactored to migrate creation to a shared component
+'''
 
 def _check_if_appengine_instance_exists(stage, debug=False):
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
@@ -122,13 +127,28 @@ def _check_if_subnet_exists(stage, debug=False):
   return status == 0
 
 
+def _check_if_connector_subnet_exists(stage, debug=False):
+  # Check that subnet exist in service project.
+  gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
+  command = "{gcloud_bin} compute networks subnets describe {connector_subnet} --verbosity critical --project={network_project} \
+    --region={subnet_region}".format(
+      gcloud_bin=gcloud_command,
+      connector_subnet=stage.connector_subnet,
+      subnet_region=stage.subnet_region,
+      network_project=stage.network_project)
+  status, out, err = shared.execute_command("Check if VPC Subnet already exists",
+      command,
+      report_empty_err=False,
+      debug=debug)
+  return status == 0
+
 def create_subnet(stage, debug=False):
   if _check_if_subnet_exists(stage, debug=debug):
     click.echo("     VPC Subnet already exists.")
     return
 
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
-  command = "{gcloud_bin} compute networks subnets create {subnet} \
+  command_subnet = "{gcloud_bin} compute networks subnets create {subnet} \
     --network={network} \
     --range={subnet_cidr} \
     --region={subnet_region} \
@@ -140,8 +160,69 @@ def create_subnet(stage, debug=False):
       subnet_region=subnet_region,
       network_project=stage.network_project
     )
-  shared.execute_command("Create the VPC Subnet", command, debug=debug)
 
+  shared.execute_command("Create the VPC Subnet", command_subnet, debug=debug)
+
+  if _check_if_connector_subnet_exists(stage, debug=debug):
+    click.echo("     VPC Connector Subnet already exists.")
+    return
+  
+  command_connector_subnet = "{gcloud_bin} compute networks subnets create {connector_subnet} \
+    --network={network} \
+    --range={connector_cidr} \
+    --region={subnet_region} \
+    --project={network_project}".format(
+      gcloud_bin=gcloud_command,
+      connector_subnet=stage.connector_subnet,
+      network=stage.network,
+      connector_cidr=stage.connector_cidr,
+      subnet_region=subnet_region,
+      network_project=stage.network_project
+    )
+  shared.execute_command("Create the VPC Connector Subnet", command_connector_subnet, debug=debug)
+
+def _check_if_vpc_connector_exists(stage, debug=False):
+  gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
+  command = "{gcloud_bin} compute networks vpc-access connectors describe {connector} --verbosity critical --project={network_project}".format(
+      gcloud_bin=gcloud_command,
+      connector=stage.connector,
+      network_project=stage.network_project)
+  status, out, err = shared.execute_command("Check if VPC Connector already exists",
+      command,
+      report_empty_err=False,
+      debug=debug)
+  return status == 0
+
+
+def create_vpc_connector(stage, debug=False):
+  '''
+  Creates a VPC in the project.
+  To do:
+  - Add support for shared VPC logic
+  - Manage XPN Host permissions or add pre-requisite for shared vpc
+  '''
+  if _check_if_vpc_connector_exists(stage, debug=debug):
+    click.echo("     VPC Connector already exists.")
+    return
+
+  gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
+  command = "{gcloud_bin} compute networks vpc-access connectors create {connector} \
+      --region {subnet_region} \
+      --subnet {connector_subnet} \
+      --subnet-project {network_project} \
+      --min-instances {connector_min_instances} \
+      --max-instances {connector_max_instances} \
+      --machine-type {connector_machine_type}".format(
+    gcloud_bin=gcloud_command,
+    connector=stage.connector,
+    subnet_region=stage.subnet_region,
+    connector_subnet=stage.connector_subnet,
+    subnet-project=stage.network_project,
+    connector_min_instances=stage.connector_min_instances,
+    connector_max_instances=stage.connector_max_instances,
+    connector_machine_type=stage.connector_machine_type
+    )
+  shared.execute_command("Create the VPC Connector", command, debug=debug)
 
 def create_service_account_key_if_needed(stage, debug=False):
   if shared.check_service_account_file(stage):
@@ -343,6 +424,7 @@ def activate_services(stage, debug=False):
     cloudbuild.googleapis.com \
     servicenetworking.googleapis.com \
     compute.googleapis.com \
+    vpcaccess.googleapis.com \
     appengine.googleapis.com".format(
       gcloud_bin=gcloud_command,
       project_id=stage.project_id)
@@ -662,6 +744,7 @@ def setup(stage_name, debug):
       downgrade_app_engine_python,
       activate_services,
       create_vpc,
+      create_subnet,
       create_connector,
       create_appengine,
       create_service_account_key_if_needed,

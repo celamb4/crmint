@@ -50,14 +50,17 @@ def _default_stage_context(stage_name):
       subnet=settings.SUBNET,
       subnet_cidr=settings.SUBNET_CIDR,
       connector=settings.CONNECTOR,
+      connector_subnet=settings.CONNECTOR_SUBNET,
       connector_cidr=settings.CONNECTOR_CIDR,
+      connector_min_instances=settings.connector_min_instances,
+      connector_max_instances=settings.connector_max_instances,
+      connector_machine_type=settings.connector_machine_type,
       network_project=settings.NETWORK_PROJECT,
       gae_project=settings.GAE_PROJECT,
       gae_region=settings.GAE_REGION,
       gae_app_title=settings.GAE_APP_TITLE,
       notification_sender_email="noreply@{}.appspotmail.com".format(stage_name)
       )
-
 
 def _create_stage_file(stage_name, context=None):
   filename = "{}.py".format(stage_name)

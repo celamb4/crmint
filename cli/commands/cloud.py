@@ -64,10 +64,10 @@ def create_appengine(stage, debug=False):
     return
 
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
-  command = "{gcloud_bin} app create --project={project_id} --region={region}".format(
+  command = "{gcloud_bin} app create --project={gae_project} --region={gae_region}".format(
       gcloud_bin=gcloud_command,
-      project_id=stage.project_id,
-      region=stage.project_region)
+      gae_project=stage.gae_project,
+      gae_region=stage.gae_region)
   shared.execute_command("Create the App Engine instance", command, debug=debug)
 
 
@@ -145,10 +145,10 @@ def grant_cloud_build_permissions(stage, debug=False):
 def _check_if_mysql_instance_exists(stage, debug=False):
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
   command = "{gcloud_bin} sql instances describe --verbosity critical \
-    --project={project_id} {database_instance_name} \
+    --project={database_project} {database_instance_name} \
     | grep -q '{database_instance_name}'".format(
       gcloud_bin=gcloud_command,
-      project_id=stage.project_id,
+      database_project=stage.database_project,
       database_instance_name=stage.database_instance_name)
   status, out, err = shared.execute_command("Check if MySQL instance already exists",
       command,
@@ -163,31 +163,33 @@ def create_mysql_instance_if_needed(stage, debug=False):
     return
 
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
-  command = "{gcloud_bin} sql instances create {database_instance_name} \
+  command = "{gcloud_bin} beta sql instances create {database_instance_name} \
     --tier={database_tier} \
     --region={database_region} \
-    --project={project_id} \
+    --project={database_project} \
     --database-version MYSQL_5_7 \
     --storage-auto-increase \
-    --network=projects/{project_id}/global/networks/{network} \
+    --network=projects/{network_service_project}/global/networks/{network} \
     --no-assign-ip ".format(
       gcloud_bin=gcloud_command,
       database_instance_name=stage.database_instance_name,
-      project_id=stage.project_id,
+      database_project=stage.database_project,
       database_region=stage.database_region,
       database_tier=stage.database_tier,
-      network=stage.network)
+      network_service_project=stage.network_service_project,
+      network=stage.network
+    )
   shared.execute_command("Creating MySQL instance", command, debug=debug)
 
 
 def _check_if_mysql_user_exists(stage, debug=False):
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
   command = "{gcloud_bin} sql users list \
-    --project={project_id} \
+    --project={database_project} \
     --instance={database_instance_name} \
     | grep -q '{database_username}'".format(
       gcloud_bin=gcloud_command,
-      project_id=stage.project_id,
+      database_project=stage.database_project,
       database_instance_name=stage.database_instance_name,
       database_username=stage.database_username)
   status, out, err = shared.execute_command("Check if MySQL user already exists",

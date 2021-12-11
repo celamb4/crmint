@@ -44,7 +44,7 @@ def _default_stage_context(stage_name):
       database_instance_name=settings.DATABASE_INSTANCE_NAME,
       database_public_ip=settings.DATABASE_PUBLIC_IP,
       database_backup_enabled=settings.DATABASE_BACKUP_ENABLED,
-      database_ha_enabled=settings.DATABASE_HA_ENABLED,
+      database_ha_type=settings.DATABASE_HA_TYPE,
       database_project=settings.DATABASE_PROJECT,
       network=settings.NETWORK,
       subnet=settings.SUBNET,

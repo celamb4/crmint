@@ -115,7 +115,7 @@ def create_vpc(stage, debug=False):
   command = "{gcloud_bin} compute addresses create {network}-psc \
       --global \
       --purpose=VPC_PEERING \
-      --addresses=10.110.0.10 \
+      --addresses=192.168.0.0 \
       --prefix-length=24 \
       --network={network}".format(
       gcloud_bin=gcloud_command,
@@ -342,12 +342,12 @@ def create_mysql_instance_if_needed(stage, debug=False):
 
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
   command = "{gcloud_bin} beta sql instances create {database_instance_name} \
-    --tier={database_tier} \
-    --region={database_region} \
-    --project={database_project} \
-    --database-version MYSQL_5_7 \
+    --tier={database_tier} --region={database_region} \
+    --project={database_project} --database-version MYSQL_5_7 \
     --storage-auto-increase \
     --network=projects/{network_project}/global/networks/{network} \
+    --availability-type={database_ha_type} \
+    --authorized-networks={network_cidr} \
     --no-assign-ip ".format(
       gcloud_bin=gcloud_command,
       database_instance_name=stage.database_instance_name,
@@ -355,7 +355,9 @@ def create_mysql_instance_if_needed(stage, debug=False):
       database_region=stage.database_region,
       database_tier=stage.database_tier,
       network_project=stage.network_project,
-      network=stage.network
+      network=stage.network,
+      network_cidr=stage.network_cidr,
+      database_ha_type=stage.database_ha_type
     )
   shared.execute_command("Creating MySQL instance", command, debug=debug)
 

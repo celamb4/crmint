@@ -124,8 +124,6 @@ def create_vpc(stage, debug=False):
     )
   shared.execute_command("Allocating an IP address range", command, debug=debug)
 
-gcloud compute addresses create PSC-ADDRESS-1 --global --addresses=10.110.0.10 --purpose=PRIVATE_SERVICE_CONNECT --network=default
-
   command = "{gcloud_bin} services vpc-peerings connect \
       --service=servicenetworking.googleapis.com \
       --ranges={network}-psc \

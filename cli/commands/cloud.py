@@ -84,6 +84,12 @@ def _check_if_vpc_exists(stage, debug=False):
 
 
 def create_vpc(stage, debug=False):
+  '''
+  Creates a VPC in the project.
+  To do:
+  - Add support for shared VPC logic
+  - Manage XPN Host permissions or add pre-requisite for shared vpc
+  '''
   if _check_if_vpc_exists(stage, debug=debug):
     click.echo("     VPC already exists.")
     return
@@ -108,7 +114,7 @@ def _check_if_subnet_exists(stage, debug=False):
       subnet=stage.subnet,
       subnet_region=stage.subnet_region,
       network_project=stage.network_project)
-  status, out, err = shared.execute_command("Check if VPC already exists",
+  status, out, err = shared.execute_command("Check if VPC Subnet already exists",
       command,
       report_empty_err=False,
       debug=debug)
@@ -133,7 +139,7 @@ def create_subnet(stage, debug=False):
       subnet_region=subnet_region,
       network_project=stage.network_project
     )
-  shared.execute_command("Create the VPC", command, debug=debug)
+  shared.execute_command("Create the VPC Subnet", command, debug=debug)
 
 
 def create_service_account_key_if_needed(stage, debug=False):

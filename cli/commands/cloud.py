@@ -157,7 +157,7 @@ def create_subnet(stage, debug=False):
       subnet=stage.subnet,
       network=stage.network,
       subnet_cidr=stage.subnet_cidr,
-      subnet_region=subnet_region,
+      subnet_region=stage.subnet_region,
       network_project=stage.network_project
     )
 
@@ -745,7 +745,7 @@ def setup(stage_name, debug):
       activate_services,
       create_vpc,
       create_subnet,
-      create_connector,
+      create_vpc_connector,
       create_appengine,
       create_service_account_key_if_needed,
       grant_cloud_build_permissions,

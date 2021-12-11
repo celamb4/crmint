@@ -347,7 +347,7 @@ def create_mysql_instance_if_needed(stage, debug=False):
     --storage-auto-increase \
     --network=projects/{network_project}/global/networks/{network} \
     --availability-type={database_ha_type} \
-    --authorized-networks={network_cidr} \
+    --authorized-networks={subnet_cidr} \
     --no-assign-ip ".format(
       gcloud_bin=gcloud_command,
       database_instance_name=stage.database_instance_name,
@@ -356,7 +356,7 @@ def create_mysql_instance_if_needed(stage, debug=False):
       database_tier=stage.database_tier,
       network_project=stage.network_project,
       network=stage.network,
-      network_cidr=stage.network_cidr,
+      subnet_cidr=stage.subnet_cidr,
       database_ha_type=stage.database_ha_type
     )
   shared.execute_command("Creating MySQL instance", command, debug=debug)

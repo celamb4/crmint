@@ -53,5 +53,3 @@ EOF
 
 # Restores initial directory.
 cd "$CURRENT_DIR"
-
-crmint cloud begin

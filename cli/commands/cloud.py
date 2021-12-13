@@ -17,6 +17,7 @@ import subprocess
 import signal
 from glob import glob
 from io import StringIO
+from yaml import safe_load, safe_dump
 
 import click
 
@@ -99,6 +100,41 @@ def _check_if_peering_exists(stage, debug=False):
       report_empty_err=False,
       debug=debug)
   return status == 0
+
+def create_firewall_rules(stage, debug=False):
+  gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
+  rules = [
+    "{gcloud_bin} compute firewall-rules create serverless-to-vpc-connector \
+    --allow tcp:667,udp:665-666,icmp \
+    --source-ranges 107.178.230.64/26,35.199.224.0/19 \
+    --direction=INGRESS \
+    --target-tags vpc-connector \
+    --network={network}".format(
+      gcloud_bin=gcloud_command,
+      network=stage.network
+    ),
+    "{gcloud_bin} compute firewall-rules update vpc-connector-to-serverless \
+    --allow tcp:667,udp:665-666,icmp \
+    --destination-ranges 107.178.230.64/26,35.199.224.0/19 \
+    --direction=EGRESS \
+    --target-tags vpc-connector \
+    --network={network}".format(
+      gcloud_bin=gcloud_command,
+      network=stage.network
+    ),
+    "{gcloud_bin}  compute firewall-rules create vpc-connector-health-checks \
+    --allow tcp:667 \
+    --source-ranges 130.211.0.0/22,35.191.0.0/16,108.170.220.0/23 \
+    --direction=INGRESS \
+    --target-tags vpc-connector \
+    --network={network}".format(
+      gcloud_bin=gcloud_command,
+      network=stage.network
+    )
+  ]
+
+  for rule in rules:
+    shared.execute_command("Create FW Rule App to VPC Connector", rule, debug=debug)
 
 def create_vpc(stage, debug=False):
   '''
@@ -580,19 +616,46 @@ EOL""".strip() % dict(
 
 def deploy_frontend(stage, debug=False):
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
+
+  frontend_files = ['gae.yaml', 'dispatch.yaml']
+
+  # Connector object with required configurations
+  connector_config = {
+    "vpc_access_connector": "name" {
+      "projects/{project}/locations/{region}/connectors/{connector}".format(
+        project=stage.gae_project,
+        region=stage.gae_region,
+        connector=stage.connector
+      )
+    }
+  }
+  
   # NB: Limit the node process memory usage to avoid overloading
   #     the Cloud Shell VM memory which makes it unresponsive.
   commands = [
       "npm install --legacy-peer-deps",
       "node --max-old-space-size=512 ./node_modules/@angular/cli/bin/ng build",
-      "{gcloud_bin} --project={project_id} app deploy gae.yaml --version=v1".format(
+      ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy {file} --version=v1".format(
           gcloud_bin=gcloud_command,
+          file=frontend_files[0],
           project_id=stage.project_id),
-      "{gcloud_bin} --project={project_id} app deploy gae.yaml --version=v1".format(
+      ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy {file} --version=v1".format(
           gcloud_bin=gcloud_command,
-          project_id=stage.project_id),
+          file=frontend_files=[1]
+          project_id=stage.project_id)
   ]
   cmd_workdir = os.path.join(stage.workdir, 'frontend')
+  # insert connector config to GAE YAML
+  for f in frontend_files:
+    with open(f,'r') as frontend_yaml:
+      r = safe_load(frontend_yaml)
+      if r:
+        with open(r, 'r') as w:
+          w.safe_dump(connector_config, w)
+      else:
+        click.echo(click.style("Unable to insert VPC connector config to App Engine {file}".format(file=f), fg='red'))
+        exit(1)
+
   total = len(commands)
   idx = 1
   for cmd in commands:
@@ -643,22 +706,48 @@ def install_backends_dependencies(stage, debug=False):
 
 def deploy_backends(stage, debug=False):
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
+
+  backend_files = ['gae_ibackend.yaml', 'gae_jbackend.yaml', 'cron.yaml']
+
+  # Connector object with required configurations
+  connector_config = {
+    "vpc_access_connector": "name" {
+      "projects/{project}/locations/{region}/connectors/{connector}".format(
+        project=stage.gae_project,
+        region=stage.gae_region,
+        connector=stage.connector
+      )
+    }
+  }
+
   commands = [
-      ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy gae_ibackend.yaml --version=v1".format(
+      ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy {file} --version=v1".format(
           gcloud_bin=gcloud_command,
+          file=backend_files[0],
           project_id=stage.project_id),
-      ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy gae_jbackend.yaml --version=v1".format(
+      ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy {file} --version=v1".format(
           gcloud_bin=gcloud_command,
+          file=backend_files[1]
           project_id=stage.project_id),
-      ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy cron.yaml".format(
+      ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy {file}".format(
           gcloud_bin=gcloud_command,
-          project_id=stage.project_id),
-      ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy \"{workdir}/frontend/dispatch.yaml\"".format(
-          gcloud_bin=gcloud_command,
-          project_id=stage.project_id,
-          workdir=stage.workdir),
+          file=backend_files[2],
+          project_id=stage.project_id)
   ]
   cmd_workdir = os.path.join(stage.workdir, 'backends')
+
+  # insert connector config to GAE YAML
+  for f in backend_files:
+    with open(f,'r') as backend_yaml:
+      r = safe_load(backend_yaml)
+      if r:
+        with open(r, 'r') as w:
+          w.safe_dump(connector_config, w)
+      else:
+        click.echo(click.style("Unable to insert VPC connector config to App Engine {file}".format(file=f), fg='red'))
+        exit(1)
+
+
   total = len(commands)
   idx = 1
   for cmd in commands:
@@ -798,6 +887,7 @@ def setup(stage_name, debug):
       create_vpc,
       create_subnet,
       create_vpc_connector,
+      create_firewall_rules,
       create_appengine,
       create_service_account_key_if_needed,
       grant_cloud_build_permissions,

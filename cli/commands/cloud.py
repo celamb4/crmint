@@ -617,7 +617,7 @@ EOL""".strip() % dict(
 def deploy_frontend(stage, debug=False):
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
 
-  frontend_files = ['gae.yaml', 'dispatch.yaml']
+  frontend_files = ['gae.yaml']
 
   # Connector object with required configurations
   connector_config = {
@@ -641,7 +641,7 @@ def deploy_frontend(stage, debug=False):
           project_id=stage.project_id),
       ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy {file} --version=v1".format(
           gcloud_bin=gcloud_command,
-          file=frontend_files=[1]
+          file=frontend_files[1],
           project_id=stage.project_id)
   ]
   cmd_workdir = os.path.join(stage.workdir, 'frontend')
@@ -672,7 +672,7 @@ def deploy_dispatch_rules(stage, debug=False):
   #     the Cloud Shell VM memory which makes it unresponsive.
   command = "{gcloud_bin} --project={project_id} app deploy dispatch.yaml".format(
       gcloud_bin=gcloud_command,
-      project_id=stage.project_id)
+      project_id=stage.gae_project)
   cmd_workdir = os.path.join(stage.workdir, 'frontend')
   shared.execute_command("Deploy the dispatch.yaml rules",
       command,
@@ -724,15 +724,15 @@ def deploy_backends(stage, debug=False):
       ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy {file} --version=v1".format(
           gcloud_bin=gcloud_command,
           file=backend_files[0],
-          project_id=stage.project_id),
+          project_id=stage.gae_project),
       ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy {file} --version=v1".format(
           gcloud_bin=gcloud_command,
-          file=backend_files[1]
-          project_id=stage.project_id),
+          file=backend_files[1],
+          project_id=stage.gae_project),
       ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy {file}".format(
           gcloud_bin=gcloud_command,
           file=backend_files[2],
-          project_id=stage.project_id)
+          project_id=stage.gae_project)
   ]
   cmd_workdir = os.path.join(stage.workdir, 'backends')
 
@@ -788,7 +788,7 @@ def start_cloud_sql_proxy(stage, debug=False):
       ),
       (
           "$CLOUD_SQL_PROXY -projects={project_id} -instances={database_instance_conn_name} -dir={cloudsql_dir} 2>/dev/null &".format(
-              project_id=stage.project_id,
+              project_id=stage.database_project,
               cloudsql_dir=stage.cloudsql_dir,
               database_instance_conn_name=stage.database_instance_conn_name),
           True,

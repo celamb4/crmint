@@ -24,4 +24,3 @@ httplib2<0.16.0
 Werkzeug==0.16.1
 rsa==4.0
 protobuf==3.17.3
-pyyaml==5.4.1

@@ -284,7 +284,7 @@ def create_subnet(stage, debug=False):
 
 def _check_if_vpc_connector_exists(stage, debug=False):
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
-  command = "{gcloud_bin} compute networks vpc-access connectors describe {connector} --verbosity critical --project={network_project}".format(
+  command = "{gcloud_bin} compute networks vpc-access connectors describe {connector} --verbosity critical --project={network_project} | grep {connector}".format(
       gcloud_bin=gcloud_command,
       connector=stage.connector,
       network_project=stage.network_project)
@@ -304,26 +304,26 @@ def create_vpc_connector(stage, debug=False):
   '''
   if _check_if_vpc_connector_exists(stage, debug=debug):
     click.echo("     VPC Connector already exists.")
-    return
-  
-  gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
-  command = "{gcloud_bin} compute networks vpc-access connectors create {connector} \
-      --region {subnet_region} \
-      --subnet {connector_subnet} \
-      --subnet-project {network_project} \
-      --min-instances {connector_min_instances} \
-      --max-instances {connector_max_instances} \
-      --machine-type {connector_machine_type}".format(
-    gcloud_bin=gcloud_command,
-    connector=stage.connector,
-    subnet_region=stage.subnet_region,
-    connector_subnet=stage.connector_subnet,
-    network_project=stage.network_project,
-    connector_min_instances=stage.connector_min_instances,
-    connector_max_instances=stage.connector_max_instances,
-    connector_machine_type=stage.connector_machine_type
-    )
-  shared.execute_command("Create the VPC Connector", command, debug=debug)
+  else:
+    gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
+    command = "{gcloud_bin} compute networks vpc-access connectors create {connector} \
+        --region {subnet_region} \
+        --subnet {connector_subnet} \
+        --subnet-project {network_project} \
+        --min-instances {connector_min_instances} \
+        --max-instances {connector_max_instances} \
+        --machine-type {connector_machine_type}".format(
+      gcloud_bin=gcloud_command,
+      connector=stage.connector,
+      subnet_region=stage.subnet_region,
+      connector_subnet=stage.connector_subnet,
+      network_project=stage.network_project,
+      connector_min_instances=stage.connector_min_instances,
+      connector_max_instances=stage.connector_max_instances,
+      connector_machine_type=stage.connector_machine_type
+      )
+    shared.execute_command("Create the VPC Connector", command, debug=debug)
+  return
 
 def create_service_account_key_if_needed(stage, debug=False):
   if shared.check_service_account_file(stage):

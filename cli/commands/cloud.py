@@ -621,14 +621,14 @@ def deploy_frontend(stage, debug=False):
 
   # Connector object with required configurations
   connector_config = {
-    "vpc_access_connector": "name" {
-      "projects/{project}/locations/{region}/connectors/{connector}".format(
+    "vpc_access_connector": {
+      "name": "projects/{project}/locations/{region}/connectors/{connector}".format(
         project=stage.gae_project,
         region=stage.gae_region,
         connector=stage.connector
       )
+      }
     }
-  }
   
   # NB: Limit the node process memory usage to avoid overloading
   #     the Cloud Shell VM memory which makes it unresponsive.
@@ -711,14 +711,14 @@ def deploy_backends(stage, debug=False):
 
   # Connector object with required configurations
   connector_config = {
-    "vpc_access_connector": "name" {
-      "projects/{project}/locations/{region}/connectors/{connector}".format(
+    "vpc_access_connector": {
+      "name": "projects/{project}/locations/{region}/connectors/{connector}".format(
         project=stage.gae_project,
         region=stage.gae_region,
         connector=stage.connector
       )
+      }
     }
-  }
 
   commands = [
       ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy {file} --version=v1".format(

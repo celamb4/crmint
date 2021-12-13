@@ -101,6 +101,18 @@ def _check_if_peering_exists(stage, debug=False):
       debug=debug)
   return status == 0
 
+def _check_if_firewall_rules_exist(stage, rule_name, debug=False):
+  gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
+  command = "{gcloud_bin} compute firewall-rules describe {rule_name} --verbosity critical --project={network_project} | grep {rule_name}".format(
+      gcloud_bin=gcloud_command,
+      rule_name=rule_name,
+      network_project=stage.network_project)
+  status, out, err = shared.execute_command("Check if VPC Peering exists",
+      command,
+      report_empty_err=False,
+      debug=debug)
+  return status == 0
+
 def create_firewall_rules(stage, debug=False):
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
   rules = [
@@ -113,7 +125,7 @@ def create_firewall_rules(stage, debug=False):
       gcloud_bin=gcloud_command,
       network=stage.network
     ),
-    "{gcloud_bin} compute firewall-rules update vpc-connector-to-serverless \
+    "{gcloud_bin} compute firewall-rules create vpc-connector-to-serverless \
     --allow tcp:667,udp:665-666,icmp \
     --destination-ranges 107.178.230.64/26,35.199.224.0/19 \
     --direction=EGRESS \
@@ -133,8 +145,12 @@ def create_firewall_rules(stage, debug=False):
     )
   ]
 
-  for rule in rules:
-    shared.execute_command("Create FW Rule App to VPC Connector", rule, debug=debug)
+  for rule_command in rules:
+    rule_name = rule_command.split()[rule_command.split().index("create") + 1]
+    if _check_if_firewall_rules_exist(stage, rule_name=rule_name):
+      pass
+    else:
+      shared.execute_command("Creating Firewall rule {}".format(rule_name), rule_command, debug=debug)
 
 def create_vpc(stage, debug=False):
   '''

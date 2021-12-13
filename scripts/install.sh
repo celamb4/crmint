@@ -32,8 +32,7 @@ if [ ! -d venv ]; then
   virtualenv --python=python2 venv
 fi
 . venv/bin/activate
-pip install --quiet -e cli/
-pip install --quiet -r cli/requiments.txt
+pip install --quiet -e cli/ -r $HOME/crmint/cli/requirements.txt
 
 # Adds the wrapper function to the user `.bashrc` file.
 echo "\\nAdding a bash function to your $HOME/.bashrc file."

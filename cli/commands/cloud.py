@@ -300,7 +300,7 @@ def create_vpc_connector(stage, debug=False):
   Creates a VPC in the project.
   To do:
   - Add support for shared VPC logic
-  - Manage XPN Host permissions or add pre-requisite for shared vpc
+  - Add pre-requisite for shared vpc (XPN Host permissions)
   '''
   if _check_if_vpc_connector_exists(stage, debug=debug):
     click.echo("     VPC Connector already exists.")
@@ -654,19 +654,15 @@ def deploy_frontend(stage, debug=False):
       ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy {file} --version=v1".format(
           gcloud_bin=gcloud_command,
           file=frontend_files[0],
-          project_id=stage.project_id),
-      ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy {file} --version=v1".format(
-          gcloud_bin=gcloud_command,
-          file=frontend_files[1],
           project_id=stage.project_id)
   ]
   cmd_workdir = os.path.join(stage.workdir, 'frontend')
   # insert connector config to GAE YAML
   for f in frontend_files:
-    with open(f,'r') as frontend_yaml:
+    with open(os.path.join(cmd_workdir, f),'r') as frontend_yaml:
       r = safe_load(frontend_yaml)
       if r:
-        with open(r, 'r') as w:
+        with open(os.path.join(cmd_workdir, f),'w') as w:
           w.safe_dump(connector_config, w)
       else:
         click.echo(click.style("Unable to insert VPC connector config to App Engine {file}".format(file=f), fg='red'))
@@ -754,10 +750,10 @@ def deploy_backends(stage, debug=False):
 
   # insert connector config to GAE YAML
   for f in backend_files:
-    with open(f,'r') as backend_yaml:
+    with open(os.path.join(cmd_workdir, f),'r') as backend_yaml:
       r = safe_load(backend_yaml)
       if r:
-        with open(r, 'r') as w:
+        with open(os.path.join(cmd_workdir, f),'w') as w:
           w.safe_dump(connector_config, w)
       else:
         click.echo(click.style("Unable to insert VPC connector config to App Engine {file}".format(file=f), fg='red'))

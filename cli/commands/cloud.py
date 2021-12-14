@@ -383,23 +383,44 @@ def downgrade_app_engine_python(stage, debug=False):
   shared.execute_command("Downgrade app-engine-python", command, debug=debug)
   
   
-def grant_cloud_build_permissions(stage, debug=False):
+def grant_required_permissions(stage, debug=False):
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
   project_number_command = "{gcloud_bin} projects list \
     --filter=\"{project_id}\" \
     --format=\"value(PROJECT_NUMBER)\"".format(
       gcloud_bin=gcloud_command,
       project_id=stage.project_id)
-  status, out, err = shared.execute_command(
+  status, project_number, err = shared.execute_command(
       "Getting the project number", project_number_command, debug=debug)
-  command = "{gcloud_bin} projects add-iam-policy-binding {project_id} \
+  
+  commands = [
+    "{gcloud_bin} projects add-iam-policy-binding {project_id} \
     --member=\"serviceAccount:{project_number}@cloudbuild.gserviceaccount.com\" \
     --role=\"roles/storage.objectViewer\"".format(
       gcloud_bin=gcloud_command,
       project_id=stage.project_id,
-      project_number=out.strip())
-  shared.execute_command("Grant Cloud Build permissions", command, debug=debug)
+      project_number=project_number.strip()),
+    "{gcloud_bin} projects add-iam-policy-binding {project_id} \
+    --role \"roles/compute.networkUser\" \
+    --member \"serviceAccount:service-{project_number}@gcp-sa-vpcaccess.iam.gserviceaccount.com\"".format(
+      gcloud_bin=gcloud_command,
+      project_id=stage.project_id,
+      project_number=project_number.strip()),
+    "{gcloud_bin} projects add-iam-policy-binding {project_id} \
+    --role \"roles/compute.networkUser\" \
+    --member \"serviceAccount:service-{project_number}@cloudservices.gserviceaccount.com\"".format(
+      gcloud_bin=gcloud_command,
+      project_id=stage.project_id,
+      project_number=project_number.strip())
+  ]
 
+  total = len(commands)
+  idx = 1
+  for cmd in commands:
+    shared.execute_command("Grant required permissions (%d/%d)" % (idx, total),
+        cmd,
+        debug=debug)
+    idx += 1
 
 def _check_if_mysql_instance_exists(stage, debug=False):
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
@@ -643,7 +664,7 @@ def deploy_frontend(stage, debug=False):
   # Connector object with required configurations
   connector_config = {
     "vpc_access_connector": {
-      "name": "projects/{project}/locations/{region}/connectors/{connector}".format(
+    "name": "projects/{project}/locations/{region}/connectors/{connector}".format(
         project=stage.gae_project,
         region=stage.gae_region,
         connector=stage.connector
@@ -912,7 +933,7 @@ def setup(stage_name, debug):
       create_vpc_connector,
       create_appengine,
       create_service_account_key_if_needed,
-      grant_cloud_build_permissions,
+      grant_required_permissions,
       create_mysql_instance_if_needed,
       create_mysql_user_if_needed,
       create_mysql_database_if_needed,

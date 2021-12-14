@@ -661,12 +661,13 @@ def deploy_frontend(stage, debug=False):
   for f in frontend_files:
     with open(os.path.join(cmd_workdir, f),'r') as frontend_yaml:
       r = safe_load(frontend_yaml)
-      if r:
-        with open(os.path.join(cmd_workdir, f),'w') as w:
-          w.safe_dump(connector_config, w)
-      else:
-        click.echo(click.style("Unable to insert VPC connector config to App Engine {file}".format(file=f), fg='red'))
-        exit(1)
+      r.update(connector_config)
+    if r:
+      with open(os.path.join(cmd_workdir, f),'w') as frontend_yaml:
+        safe_dump(r, frontend_yaml)
+    else:
+      click.echo(click.style("Unable to insert VPC connector config to App Engine {file}".format(file=f), fg='red'))
+      exit(1)
 
   total = len(commands)
   idx = 1
@@ -746,19 +747,19 @@ def deploy_backends(stage, debug=False):
           file=backend_files[2],
           project_id=stage.gae_project)
   ]
+  
   cmd_workdir = os.path.join(stage.workdir, 'backends')
 
   # insert connector config to GAE YAML
   for f in backend_files:
     with open(os.path.join(cmd_workdir, f),'r') as backend_yaml:
       r = safe_load(backend_yaml)
-      if r:
-        with open(os.path.join(cmd_workdir, f),'w') as w:
-          w.safe_dump(connector_config, w)
-      else:
-        click.echo(click.style("Unable to insert VPC connector config to App Engine {file}".format(file=f), fg='red'))
-        exit(1)
-
+    if r:
+      with open(os.path.join(cmd_workdir, f),'w') as backend_yaml:
+        safe_dump(connector_config, backend_yaml)
+    else:
+      click.echo(click.style("Unable to insert VPC connector config to App Engine {file}".format(file=f), fg='red'))
+      exit(1)
 
   total = len(commands)
   idx = 1

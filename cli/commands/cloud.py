@@ -651,7 +651,7 @@ def deploy_frontend(stage, debug=False):
   commands = [
       "npm install --legacy-peer-deps",
       "node --max-old-space-size=512 ./node_modules/@angular/cli/bin/ng build",
-      ". env/bin/activate && {gcloud_bin} --project={project_id} app deploy {file} --version=v1".format(
+      "{gcloud_bin} --project={project_id} app deploy {file} --version=v1".format(
           gcloud_bin=gcloud_command,
           file=frontend_files[0],
           project_id=stage.project_id)
@@ -659,13 +659,14 @@ def deploy_frontend(stage, debug=False):
   cmd_workdir = os.path.join(stage.workdir, 'frontend')
   # insert connector config to GAE YAML
   for f in frontend_files:
-    with open(os.path.join(cmd_workdir, f),'r') as frontend_yaml:
-      r = safe_load(frontend_yaml)
-      r.update(connector_config)
-    if r:
-      with open(os.path.join(cmd_workdir, f),'w') as frontend_yaml:
-        safe_dump(r, frontend_yaml)
-    else:
+    try: 
+      with open(os.path.join(cmd_workdir, f),'r') as yaml_read:
+        r = safe_load(yaml_read)
+        r.update(connector_config)
+
+      with open(os.path.join(cmd_workdir, f),'w') as yaml_write:
+          safe_dump(r, yaml_write)
+    except:
       click.echo(click.style("Unable to insert VPC connector config to App Engine {file}".format(file=f), fg='red'))
       exit(1)
 
@@ -747,17 +748,19 @@ def deploy_backends(stage, debug=False):
           file=backend_files[2],
           project_id=stage.gae_project)
   ]
-  
+
   cmd_workdir = os.path.join(stage.workdir, 'backends')
 
   # insert connector config to GAE YAML
   for f in backend_files:
-    with open(os.path.join(cmd_workdir, f),'r') as backend_yaml:
-      r = safe_load(backend_yaml)
-    if r:
-      with open(os.path.join(cmd_workdir, f),'w') as backend_yaml:
-        safe_dump(connector_config, backend_yaml)
-    else:
+    try: 
+      with open(os.path.join(cmd_workdir, f),'r') as yaml_read:
+        r = safe_load(yaml_read)
+        r.update(connector_config)
+
+      with open(os.path.join(cmd_workdir, f),'w') as yaml_write:
+          safe_dump(r, yaml_write)
+    except:
       click.echo(click.style("Unable to insert VPC connector config to App Engine {file}".format(file=f), fg='red'))
       exit(1)
 

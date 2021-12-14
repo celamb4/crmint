@@ -114,6 +114,11 @@ def _check_if_firewall_rules_exist(stage, rule_name, debug=False):
   return status == 0
 
 def create_firewall_rules(stage, debug=False):
+  '''
+  Creates 3 required firewall rules needed for App Engine to VPC connection
+  These are now handled automatically by GCP so not required.
+  This function is not invoked but leaving in case required.
+  '''
   gcloud_command = "$GOOGLE_CLOUD_SDK/bin/gcloud --quiet"
   rules = [
     "{gcloud_bin} compute firewall-rules create serverless-to-vpc-connector \
@@ -148,7 +153,7 @@ def create_firewall_rules(stage, debug=False):
   for rule_command in rules:
     rule_name = rule_command.split()[rule_command.split().index("create") + 1]
     if _check_if_firewall_rules_exist(stage, rule_name=rule_name):
-      pass
+      continue
     else:
       shared.execute_command("Creating Firewall rule {}".format(rule_name), rule_command, debug=debug)
 
@@ -753,6 +758,8 @@ def deploy_backends(stage, debug=False):
 
   # insert connector config to GAE YAML
   for f in backend_files:
+    if f is 'cron.yaml':
+      continue
     try: 
       with open(os.path.join(cmd_workdir, f),'r') as yaml_read:
         r = safe_load(yaml_read)
@@ -803,7 +810,7 @@ def start_cloud_sql_proxy(stage, debug=False):
           False,
       ),
       (
-          "$CLOUD_SQL_PROXY -projects={project_id} -instances={database_instance_conn_name} -dir={cloudsql_dir} 2>/dev/null &".format(
+          "$CLOUD_SQL_PROXY -projects={project_id} -instances={database_instance_conn_name}=tcp:3306 -dir={cloudsql_dir} 2>/dev/null &".format(
               project_id=stage.database_project,
               cloudsql_dir=stage.cloudsql_dir,
               database_instance_conn_name=stage.database_instance_conn_name),
@@ -903,7 +910,6 @@ def setup(stage_name, debug):
       create_vpc,
       create_subnet,
       create_vpc_connector,
-      create_firewall_rules,
       create_appengine,
       create_service_account_key_if_needed,
       grant_cloud_build_permissions,
